@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <script>(function(){try{var t=localStorage.getItem("thiaguinho_theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark");}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Assinador Digital - thIAguinho Soluções</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0F172A">
+  <script src="js/vendor/pdf.min.js"></script>
+  <script src="js/vendor/pdf-lib.min.js"></script>
+  <script src="js/vendor/jspdf.umd.min.js"></script>
+  <script src="js/vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="js/vendor/xlsx.full.min.js"></script>
+  <style>
+    :root,:root[data-theme="dark"]{
+      --bg:#0b111d;--surf:#111a2b;--surf2:#172235;--surf3:#202d42;--text:#edf3f8;--muted:#9aabba;--muted2:#c4ced7;
+      --brand:#58a6c8;--brand2:#8abed8;--ok:#67b98f;--warn:#d9ae62;--danger:#dd6b7c;--line:rgba(220,232,242,.14);
+      --shadow:0 18px 50px rgba(0,0,0,.32);--ff:Inter,system-ui,sans-serif;--fm:"JetBrains Mono",monospace;--fd:Rajdhani,sans-serif;color-scheme:dark;
+    }
+    :root[data-theme="light"]{
+      --bg:#f3f6fa;--surf:#ffffff;--surf2:#f7fafc;--surf3:#e8eef5;--text:#111827;--muted:#64748b;--muted2:#334155;
+      --brand:#0f6d99;--brand2:#0b4f70;--ok:#047857;--warn:#a16207;--danger:#b91c1c;--line:rgba(15,23,42,.13);
+      --shadow:0 14px 34px rgba(15,23,42,.12);color-scheme:light;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--ff)}
+    .android-note{border:1px solid rgba(103,185,143,.35);background:rgba(103,185,143,.08);color:var(--muted2);padding:9px 10px;border-radius:7px;font-size:.72rem;line-height:1.35;margin-top:8px}
+    body:before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(125,170,196,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(125,170,196,.055) 1px,transparent 1px);background-size:44px 44px;pointer-events:none}
+    .app{position:relative;z-index:1;display:grid;grid-template-rows:auto 1fr auto;min-height:100vh}
+    header{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line);background:rgba(11,17,29,.82);backdrop-filter:blur(10px)}
+    :root[data-theme="light"] header{background:rgba(255,255,255,.86)}
+    .brand{font-family:var(--fd);font-weight:700;letter-spacing:4px;color:var(--brand);font-size:1rem}
+    .brand small{display:block;font-family:var(--fm);letter-spacing:1px;color:var(--muted);font-size:.6rem;margin-top:1px}
+    .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+    button,.btn{border:1px solid var(--line);background:var(--surf2);color:var(--text);min-height:40px;padding:0 14px;border-radius:6px;font-weight:800;font-family:var(--fm);font-size:.68rem;letter-spacing:.8px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+    button.primary{background:var(--brand);border-color:var(--brand);color:#06131e}
+    button.success{background:var(--ok);border-color:var(--ok);color:#06130d}
+    button.danger{background:rgba(221,107,124,.10);border-color:rgba(221,107,124,.35);color:var(--danger)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    main{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:14px;padding:14px;height:calc(100vh - 106px)}
+    .panel,.preview-shell{border:1px solid var(--line);background:var(--surf);box-shadow:var(--shadow);border-radius:8px;overflow:hidden}
+    .panel{display:flex;flex-direction:column;min-height:0}
+    .panel-scroll{padding:14px;overflow:auto}
+    .block{border-top:1px solid var(--line);padding-top:13px;margin-top:13px}
+    .block:first-child{border-top:0;margin-top:0;padding-top:0}
+    h1{font-size:1.12rem;margin:0;color:var(--text)}
+    h2{font-family:var(--fm);font-size:.72rem;color:var(--brand);letter-spacing:1.4px;margin:0 0 10px;text-transform:uppercase}
+    p{color:var(--muted);font-size:.84rem;line-height:1.45;margin:0 0 10px}
+    label{display:block;font-family:var(--fm);font-size:.64rem;font-weight:800;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin:0 0 5px}
+    input,select,textarea{width:100%;min-height:42px;background:var(--surf2);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:10px;font:inherit}
+    input[type=file]{padding:8px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+    .field{margin-bottom:10px}
+    .sign-pad-wrap{position:relative;border:1px solid var(--line);background:#fff;border-radius:6px;overflow:hidden}
+    #assinadorCanvas{display:block;width:100%;height:150px;touch-action:none}
+    .sign-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8a97a5;font-family:var(--fm);font-size:.72rem;pointer-events:none}
+    .tiny{font-family:var(--fm);font-size:.62rem;color:var(--muted);line-height:1.45}
+    .status{border-radius:6px;padding:10px;margin-top:10px;font-size:.78rem;font-weight:700;display:none}
+    .status.ok{display:block;background:rgba(103,185,143,.12);border:1px solid rgba(103,185,143,.35);color:var(--ok)}
+    .status.warn{display:block;background:rgba(217,174,98,.12);border:1px solid rgba(217,174,98,.35);color:var(--warn)}
+    .status.err{display:block;background:rgba(221,107,124,.12);border:1px solid rgba(221,107,124,.35);color:var(--danger)}
+    .preview-shell{display:grid;grid-template-rows:auto 1fr;min-width:0;min-height:0}
+    .preview-top{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surf2)}
+    .preview-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+    .preview-body{overflow:auto;padding:18px;display:flex;justify-content:center;align-items:flex-start}
+    .page-stage{position:relative;display:inline-block;min-width:280px;background:#fff;color:#111827;box-shadow:0 18px 54px rgba(0,0,0,.38)}
+    #pdfCanvas{display:block;max-width:100%;height:auto}
+    .sheet-stage{width:min(960px,100%);min-height:720px;background:#fff;padding:24px;color:#111827;position:relative}
+    .sheet-stage h3{margin:0 0 12px;font-size:18px}
+    .sheet-table{border-collapse:collapse;width:100%;font-size:11px}
+    .sheet-table td,.sheet-table th{border:1px solid #cbd5e1;padding:5px;vertical-align:top}
+    .sheet-table tr:first-child td{font-weight:800;background:#e8eef5}
+    .signature-box{position:absolute;left:34px;top:34px;width:260px;min-height:96px;border:1px solid rgba(15,109,153,.38);background:rgba(255,255,255,.96);border-radius:8px;padding:8px;cursor:move;user-select:none;box-shadow:0 10px 24px rgba(15,23,42,.16)}
+    .signature-box.edit-guides{border:1px dashed #0f6d99;outline:1px solid rgba(15,109,153,.20);outline-offset:3px}
+    .signature-box.no-bg{background:transparent}
+    .signature-box.no-card{background:transparent;border-color:transparent;box-shadow:none;outline:0}
+    .signature-box.no-card.edit-guides{border-color:#0f6d99;outline:1px dashed rgba(15,109,153,.35)}
+    .signature-box img{display:block;max-width:100%;height:38px;object-fit:contain;margin:0 auto 4px}
+    .signature-box .line{height:1px;background:#0f172a;margin:2px 10px 5px}
+    .signature-box b{display:block;text-align:center;font-size:11px;color:#0f172a}
+    .signature-box span{display:block;text-align:center;font-size:9px;color:#475569;line-height:1.25}
+    .empty-preview{max-width:520px;text-align:center;margin:auto;color:var(--muted)}
+    .empty-preview strong{display:block;color:var(--text);font-size:1.15rem;margin-bottom:8px}
+    @media(max-width:920px){main{grid-template-columns:1fr;height:auto;min-height:calc(100vh - 74px)}.preview-shell{min-height:640px}.grid2,.grid3{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}.header-actions{width:100%}.header-actions .btn,.header-actions button{flex:1}.preview-body{padding:10px}.signature-box{width:230px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="brand">OFICIN_IA <small>Assinador digital local</small></div>
+      <h1>Assinar PDF ou planilha offline</h1>
+    </div>
+    <div class="header-actions">
+      <button type="button" onclick="location.reload()">Novo documento</button>
+      <button type="button" id="btnTemaAssinador">Tema</button>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <div class="panel-scroll">
+        <section class="block">
+          <h2>Documento</h2>
+          <p>Importe um PDF ou planilha. Todo o processamento acontece neste computador, sem envio do documento para nenhum serviço externo.</p>
+          <div class="field">
+            <label>PDF, XLSX, XLS ou CSV</label>
+            <input type="file" id="assinadorArquivo" accept="application/pdf,.pdf,.xlsx,.xls,.csv">
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Modo</label>
+              <select id="assinadorModo">
+                <option value="fim">Assinar no final do documento</option>
+                <option value="manual">Assinar no local marcado</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Página PDF</label>
+              <select id="assinadorPagina" disabled><option>1</option></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2>Quem assina</h2>
+          <div class="field"><label>Nome completo</label><input id="assinadorNome" autocomplete="name" placeholder="Nome de quem assinou"></div>
+          <div class="grid2">
+            <div class="field"><label>CPF / documento</label><input id="assinadorCpf" inputmode="numeric" placeholder="000.000.000-00"></div>
+            <div class="field"><label>Cargo / função</label><input id="assinadorCargo" placeholder="Responsável técnico"></div>
+          </div>
+          <div class="field"><label>Observação do ato</label><textarea id="assinadorObs" rows="2" placeholder="Ex: Documento conferido e assinado digitalmente no atendimento."></textarea></div>
+        </section>
+
+        <section class="block">
+          <h2>Assinatura</h2>
+          <div class="sign-pad-wrap">
+            <canvas id="assinadorCanvas"></canvas>
+            <div class="sign-hint" id="assinadorHint">desenhe aqui</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
+            <button type="button" id="btnLimparAssinatura">Limpar</button>
+            <button type="button" id="btnSalvarAssinatura">Salvar local</button>
+            <button type="button" id="btnColarAssinatura">Colar assinatura</button>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Importar assinatura pronta</label>
+            <input type="file" id="assinadorImagem" accept="image/png,image/jpeg,image/webp">
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>Fundo da assinatura</label>
+              <select id="assinadorFundo">
+                <option value="transparente">Sem fundo</option>
+                <option value="branco">Com fundo branco</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Aparência no PDF</label>
+              <select id="assinadorAparencia">
+                <option value="limpa">Sem quadro</option>
+                <option value="cartao">Cartão profissional</option>
+              </select>
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.72rem;color:var(--muted2);margin-top:2px">
+            <input type="checkbox" id="assinadorGuias" checked style="width:auto;min-height:0"> mostrar guias de posicionamento na prévia
+          </label>
+          <div class="tiny" style="margin-top:8px">A assinatura pode ser desenhada, importada ou colada da área de transferência. Os dados ficam salvos somente neste navegador para reaproveitamento local.</div>
+        </section>
+
+        <section class="block">
+          <h2>Gerar arquivo</h2>
+          <div class="field">
+            <label>Pasta de saída</label>
+            <div class="grid2">
+              <button type="button" id="btnEscolherPastaSaida">Escolher pasta</button>
+              <button type="button" id="btnUsarDownload">Usar download</button>
+            </div>
+            <div class="tiny" id="assinadorPastaSaida">Sem pasta escolhida. O navegador usará o download padrão.</div>
+            <div class="android-note" id="assinadorModoAndroid" style="display:none">Modo APK Android ativo: os PDFs assinados serão salvos no armazenamento do app, na pasta <strong>Assinaturas_thIAguinho</strong>.</div>
+          </div>
+          <div class="grid2">
+            <button type="button" class="success" id="btnGerarAssinado">Gerar PDF assinado</button>
+            <button type="button" class="danger" id="btnLimparTudo">Limpar dados locais</button>
+          </div>
+          <div id="assinadorStatus" class="status"></div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="preview-shell">
+      <div class="preview-top">
+        <div>
+          <strong id="previewTitulo">Prévia do documento</strong>
+          <div class="tiny" id="previewMeta">Importe um arquivo para começar.</div>
+        </div>
+        <div class="preview-actions">
+          <button type="button" id="btnPaginaAnterior" disabled>Anterior</button>
+          <button type="button" id="btnPaginaProxima" disabled>Próxima</button>
+          <button type="button" id="btnCentralizarAssinatura" disabled>Rodapé</button>
+        </div>
+      </div>
+      <div class="preview-body" id="previewBody">
+        <div class="empty-preview">
+          <strong>Nenhum documento carregado</strong>
+          Selecione um PDF ou planilha para pré-visualizar e posicionar a assinatura.
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer style="padding:8px 14px 14px;text-align:center;font-family:var(--fm);font-size:.62rem;color:var(--muted);letter-spacing:.4px">Powered by thIAguinho Soluções Digitais</footer>
+</div>
+
+<script src="js/assinador-local.js"></script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){});}</script>
+</body>
+</html>
