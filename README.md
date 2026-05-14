@@ -55,3 +55,9 @@ Documentos/Assinaturas_thIAguinho/
 ```
 
 Depois de salvar, tenta abrir a tela de compartilhamento do Android para facilitar enviar o arquivo por WhatsApp, e-mail ou outro app.
+
+
+## Correção v2
+
+- Ajuste no PDF.js para Android WebView/Capacitor: worker carregado também no HTML e caminho absoluto via URL.
+- Corrige erro: Setting up fake worker failed / WorkerMessageHandler undefined ao importar PDF.
