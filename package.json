@@ -1,0 +1,23 @@
+{
+  "name": "assinador-digital-thiaguinho-android",
+  "version": "1.0.0",
+  "description": "Assinador digital local offline com geração de APK Android via GitHub Actions.",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "prepare-www": "node scripts/prepare-www.mjs",
+    "android:add": "npx cap add android",
+    "android:sync": "npm run prepare-www && npx cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug --no-daemon"
+  },
+  "dependencies": {
+    "@capacitor/android": "latest",
+    "@capacitor/cli": "latest",
+    "@capacitor/core": "latest",
+    "@capacitor/filesystem": "latest",
+    "@capacitor/share": "latest"
+  }
+}

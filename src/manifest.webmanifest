@@ -1,0 +1,10 @@
+{
+  "name": "Assinador Digital thIAguinho Soluções",
+  "short_name": "Assinador",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b111d",
+  "theme_color": "#0F172A",
+  "description": "Assinador local offline para PDF e planilhas.",
+  "icons": []
+}
