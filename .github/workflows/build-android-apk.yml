@@ -43,6 +43,9 @@ jobs:
       - name: Sincronizar Capacitor
         run: npx cap sync android
 
+      - name: Instalar renderizador PDF nativo Android
+        run: npm run android:native
+
       - name: Gerar APK debug
         run: |
           cd android
