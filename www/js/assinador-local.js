@@ -20,10 +20,15 @@
     nativePdfBase64: '',
     nativePdfPages: [],
     sheetRows: [],
+    workbookSheets: [],
+    activeSheetIndex: 0,
+    sheetExportMode: 'ativa',
+    sheetPdfFormat: 'auto',
     signatureDataUrl: '',
     hasSignature: false,
     signatureBackground: 'transparente',
     signatureAppearance: 'limpa',
+    signatureScale: 100,
     showGuides: true,
     outputDirectoryHandle: null,
     outputDirectoryName: '',
@@ -215,6 +220,9 @@
       obs: $('assinadorObs')?.value.trim() || '',
       signatureBackground: $('assinadorFundo')?.value || state.signatureBackground || 'transparente',
       signatureAppearance: $('assinadorAparencia')?.value || state.signatureAppearance || 'limpa',
+      signatureScale: Number($('assinadorTamanho')?.value || state.signatureScale || 100),
+      sheetExportMode: $('planilhaExportacao')?.value || state.sheetExportMode || 'ativa',
+      sheetPdfFormat: $('planilhaFormato')?.value || state.sheetPdfFormat || 'auto',
       showGuides: !!$('assinadorGuias')?.checked
     });
     if (state.signatureDataUrl) data.signatureDataUrl = state.signatureDataUrl;
@@ -229,10 +237,17 @@
     if ($('assinadorObs')) $('assinadorObs').value = data.obs || '';
     state.signatureBackground = data.signatureBackground || 'transparente';
     state.signatureAppearance = data.signatureAppearance || 'limpa';
+    state.signatureScale = Number(data.signatureScale || 100);
+    state.sheetExportMode = data.sheetExportMode || 'ativa';
+    state.sheetPdfFormat = data.sheetPdfFormat || 'auto';
     state.showGuides = data.showGuides !== false;
     if ($('assinadorFundo')) $('assinadorFundo').value = state.signatureBackground;
     if ($('assinadorAparencia')) $('assinadorAparencia').value = state.signatureAppearance;
+    if ($('assinadorTamanho')) $('assinadorTamanho').value = String(state.signatureScale);
+    if ($('planilhaExportacao')) $('planilhaExportacao').value = state.sheetExportMode;
+    if ($('planilhaFormato')) $('planilhaFormato').value = state.sheetPdfFormat;
     if ($('assinadorGuias')) $('assinadorGuias').checked = state.showGuides;
+    updateSignatureSizeInfo();
     if (data.signatureDataUrl) {
       state.signatureDataUrl = data.signatureDataUrl;
       state.hasSignature = true;
@@ -404,10 +419,14 @@
   function optionData() {
     state.signatureBackground = $('assinadorFundo')?.value || state.signatureBackground || 'transparente';
     state.signatureAppearance = $('assinadorAparencia')?.value || state.signatureAppearance || 'limpa';
+    state.signatureScale = Math.min(180, Math.max(70, Number($('assinadorTamanho')?.value || state.signatureScale || 100)));
+    state.sheetExportMode = $('planilhaExportacao')?.value || state.sheetExportMode || 'ativa';
+    state.sheetPdfFormat = $('planilhaFormato')?.value || state.sheetPdfFormat || 'auto';
     state.showGuides = !!$('assinadorGuias')?.checked;
     return {
       background: state.signatureBackground,
       appearance: state.signatureAppearance,
+      scale: state.signatureScale,
       guides: state.showGuides
     };
   }
@@ -447,12 +466,43 @@
     return canvas.toDataURL('image/png');
   }
 
+  function updateSignatureSizeInfo() {
+    const value = Math.min(180, Math.max(70, Number($('assinadorTamanho')?.value || state.signatureScale || 100)));
+    state.signatureScale = value;
+    if ($('assinadorTamanho')) $('assinadorTamanho').value = String(value);
+    if ($('assinadorTamanhoInfo')) $('assinadorTamanhoInfo').textContent = 'Tamanho: ' + value + '%';
+  }
+
+  function applySignatureBoxSize(box) {
+    if (!box) return;
+    const scale = Math.min(180, Math.max(70, Number(state.signatureScale || 100))) / 100;
+    box.style.setProperty('--sig-box-w', Math.round(260 * scale) + 'px');
+    box.style.setProperty('--sig-box-h', Math.round(96 * scale) + 'px');
+    box.style.setProperty('--sig-pad', Math.max(5, Math.round(8 * scale)) + 'px');
+    box.style.setProperty('--sig-img-h', Math.max(24, Math.round(38 * scale)) + 'px');
+    box.style.setProperty('--sig-name-fs', Math.max(8, (11 * scale).toFixed(1)) + 'px');
+    box.style.setProperty('--sig-meta-fs', Math.max(7, (9 * scale).toFixed(1)) + 'px');
+  }
+
+  function keepSignatureInsideStage(box) {
+    const stage = box?.parentElement;
+    if (!box || !stage) return;
+    const maxX = Math.max(0, stage.clientWidth - box.offsetWidth);
+    const maxY = Math.max(0, stage.clientHeight - box.offsetHeight);
+    const left = Math.min(maxX, Math.max(0, parseFloat(box.style.left || '34') || 0));
+    const top = Math.min(maxY, Math.max(0, parseFloat(box.style.top || '34') || 0));
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
+  }
+
   function applySignatureBoxStyle(box) {
     if (!box) return;
     const opt = optionData();
     box.classList.toggle('edit-guides', !!opt.guides);
     box.classList.toggle('no-bg', opt.background === 'transparente');
     box.classList.toggle('no-card', opt.appearance === 'limpa');
+    applySignatureBoxSize(box);
+    keepSignatureInsideStage(box);
   }
 
   function validate() {
@@ -507,11 +557,12 @@
     const stage = D.querySelector('.page-stage, .sheet-stage');
     const box = ensureSignatureBox(stage);
     if (!stage || !box) return;
+    applySignatureBoxSize(box);
     const rect = stage.getBoundingClientRect();
-    const w = Math.min(300, Math.max(220, rect.width * 0.34));
-    box.style.width = w + 'px';
-    box.style.left = Math.max(20, (rect.width - w) / 2) + 'px';
-    box.style.top = Math.max(20, rect.height - 132) + 'px';
+    const w = box.offsetWidth || Math.min(300, Math.max(220, rect.width * 0.34));
+    const h = box.offsetHeight || 100;
+    box.style.left = Math.max(12, (rect.width - w) / 2) + 'px';
+    box.style.top = Math.max(12, rect.height - h - 28) + 'px';
   }
 
   function lockDragScroll() {
@@ -718,6 +769,9 @@
     state.pdfBytes = null;
     state.pdfDocProxy = null;
     state.sheetRows = [];
+    state.workbookSheets = [];
+    state.activeSheetIndex = 0;
+    if ($('planilhaOpcoes')) $('planilhaOpcoes').style.display = state.type === 'sheet' ? '' : 'none';
     $('previewTitulo').textContent = file.name;
     status('Carregando documento...', 'warn');
     if (state.type === 'pdf') await loadPdf(file);
@@ -859,35 +913,81 @@
     fillPageSelect();
   }
 
+  function normalizeSheetRows(ws) {
+    const rows = W.XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false });
+    return rows.filter(row => row.some(cell => String(cell || '').trim()));
+  }
+
+  function sheetColumnCount(rows) {
+    return Math.max(1, rows.reduce((m, r) => Math.max(m, Array.isArray(r) ? r.length : 0), 0));
+  }
+
   async function loadSheet(file) {
     if (!W.XLSX) throw new Error('XLSX não carregou.');
     const buf = await file.arrayBuffer();
-    const wb = W.XLSX.read(buf, { type: 'array', cellDates: false });
-    const sheetName = wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const rows = W.XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' })
-      .filter(row => row.some(cell => String(cell || '').trim()));
-    state.sheetRows = rows;
-    renderSheetPreview(sheetName);
+    const wb = W.XLSX.read(buf, { type: 'array', cellDates: false, cellStyles: true, sheetStubs: true });
+    state.workbookSheets = wb.SheetNames.map((name, index) => {
+      const ws = wb.Sheets[name];
+      return {
+        name,
+        index,
+        rows: normalizeSheetRows(ws),
+        merges: Array.isArray(ws['!merges']) ? ws['!merges'] : [],
+        cols: Array.isArray(ws['!cols']) ? ws['!cols'] : []
+      };
+    }).filter(sheet => sheet.rows.length || sheet.index === 0);
+    if (!state.workbookSheets.length) state.workbookSheets = [{ name: 'Planilha', index: 0, rows: [], merges: [], cols: [] }];
+    state.activeSheetIndex = 0;
+    state.sheetRows = state.workbookSheets[0].rows;
+    fillSheetSelect();
+    renderSheetPreview();
   }
 
-  function renderSheetPreview(sheetName) {
-    const rows = state.sheetRows.slice(0, 80);
-    const maxCols = Math.min(12, Math.max(1, rows.reduce((m, r) => Math.max(m, r.length), 0)));
+  function fillSheetSelect() {
+    const sel = $('assinadorPagina');
+    if (!sel) return;
+    sel.disabled = false;
+    sel.innerHTML = '';
+    state.workbookSheets.forEach((sheet, idx) => {
+      const opt = D.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = sheet.name || ('Aba ' + (idx + 1));
+      if (idx === state.activeSheetIndex) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function activeSheet() {
+    return state.workbookSheets[state.activeSheetIndex] || { name: 'Planilha', rows: state.sheetRows || [], merges: [], cols: [] };
+  }
+
+  function renderSheetPreview() {
+    const sheet = activeSheet();
+    state.sheetRows = sheet.rows || [];
+    const rows = state.sheetRows.slice(0, 120);
+    const totalCols = sheetColumnCount(state.sheetRows);
+    const previewCols = Math.min(28, totalCols);
+    const colgroup = Array.from({ length: previewCols }, (_, i) => {
+      const wch = Number(sheet.cols?.[i]?.wch || 0);
+      const px = Math.max(70, Math.min(220, Math.round((wch ? wch : 12) * 8)));
+      return `<col style="width:${px}px">`;
+    }).join('');
     const trs = rows.map(row => {
       const tds = [];
-      for (let i = 0; i < maxCols; i++) tds.push(`<td>${esc(row[i] || '')}</td>`);
+      for (let i = 0; i < previewCols; i++) tds.push(`<td>${esc(row[i] || '')}</td>`);
       return `<tr>${tds.join('')}</tr>`;
     }).join('');
+    const aviso = totalCols > previewCols || state.sheetRows.length > rows.length
+      ? `Prévia mostrando ${rows.length} de ${state.sheetRows.length} linhas e ${previewCols} de ${totalCols} colunas. O PDF exporta o conteúdo completo conforme o modo escolhido.`
+      : `Prévia da aba completa: ${state.sheetRows.length} linhas e ${totalCols} colunas.`;
     $('previewBody').innerHTML = `
       <div class="sheet-stage" id="sheetStage">
-        <h3>${esc(sheetName || 'Planilha')}</h3>
-        <table class="sheet-table">${trs || '<tr><td>Planilha vazia</td></tr>'}</table>
+        <h3>${esc(sheet.name || 'Planilha')}</h3>
+        <div class="sheet-note">${esc(aviso)}</div>
+        <div class="sheet-scroll-preview"><table class="sheet-table">${colgroup}${trs || '<tr><td>Planilha vazia</td></tr>'}</table></div>
       </div>`;
     ensureSignatureBox($('sheetStage'));
     placeSignatureFooter();
-    $('assinadorPagina').disabled = true;
-    $('assinadorPagina').innerHTML = '<option>PDF final</option>';
     $('btnPaginaAnterior').disabled = true;
     $('btnPaginaProxima').disabled = true;
     $('btnCentralizarAssinatura').disabled = false;
@@ -902,7 +1002,8 @@
           ? `PDF com ${state.pdfPages} página(s). Prévia nativa Android ativa. Assinatura na página ${state.pdfPage}.`
           : `PDF com ${state.pdfPages} página(s). Assinatura na página ${state.pdfPage}.`);
     } else if (state.type === 'sheet') {
-      $('previewMeta').textContent = `Planilha com ${state.sheetRows.length} linha(s). A saída será PDF assinado.`;
+      const sh = activeSheet();
+      $('previewMeta').textContent = `Planilha com ${state.workbookSheets.length || 1} aba(s). Aba atual: ${sh.name || 'Planilha'} com ${(sh.rows || []).length} linha(s). PDF sem corte de colunas no modo profissional.`;
     } else {
       $('previewMeta').textContent = 'Importe um arquivo para começar.';
     }
@@ -970,15 +1071,16 @@
     await saveBlob(new Blob([bytes], { type: 'application/pdf' }), safeName(state.fileName) + '_assinado.pdf');
   }
 
-  async function drawJsPdfSignature(doc, data) {
+  async function drawJsPdfSignature(doc, data, placement) {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const opt = optionData();
     const sigDataUrl = await signatureImageForExport();
-    const w = 92;
-    const h = 43;
-    const x = (pageW - w) / 2;
-    const y = pageH - h - 22;
+    const scale = Math.min(180, Math.max(70, Number(opt.scale || 100))) / 100;
+    const w = Math.min(pageW - 24, 92 * scale);
+    const h = 43 * scale;
+    const x = placement && Number.isFinite(placement.x) ? placement.x : (pageW - w) / 2;
+    const y = placement && Number.isFinite(placement.y) ? placement.y : pageH - h - 22;
     if (opt.appearance === 'cartao') {
       doc.setDrawColor(30, 41, 59);
       if (opt.background === 'branco') {
@@ -988,46 +1090,101 @@
         doc.roundedRect(x, y, w, h, 2, 2, 'S');
       }
     }
-    doc.addImage(sigDataUrl, 'PNG', x + 18, y + 4, w - 36, 15);
+    doc.addImage(sigDataUrl, 'PNG', x + w * 0.20, y + h * 0.09, w * 0.60, h * 0.35);
     doc.setDrawColor(15, 23, 42);
-    doc.line(x + 10, y + 22, x + w - 10, y + 22);
+    doc.line(x + w * 0.11, y + h * 0.51, x + w * 0.89, y + h * 0.51);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text(data.nome, x + w / 2, y + 28, { align: 'center', maxWidth: w - 12 });
+    doc.setFontSize(Math.max(6.5, 8 * scale));
+    doc.text(data.nome, x + w / 2, y + h * 0.65, { align: 'center', maxWidth: w - 12 });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.6);
+    doc.setFontSize(Math.max(5.4, 6.6 * scale));
     doc.setTextColor(71, 85, 105);
-    doc.text(`${data.cargo || 'Responsável'} | CPF/Doc: ${data.cpf}`, x + w / 2, y + 34, { align: 'center', maxWidth: w - 12 });
-    doc.text(`Assinado em ${data.data}`, x + w / 2, y + 39, { align: 'center', maxWidth: w - 12 });
+    doc.text(`${data.cargo || 'Responsável'} | CPF/Doc: ${data.cpf}`, x + w / 2, y + h * 0.79, { align: 'center', maxWidth: w - 12 });
+    doc.text(`Assinado em ${data.data}`, x + w / 2, y + h * 0.91, { align: 'center', maxWidth: w - 12 });
+  }
+
+  function sheetPdfConfig(sheets) {
+    const maxCols = Math.max(1, sheets.reduce((m, sh) => Math.max(m, sheetColumnCount(sh.rows || [])), 0));
+    const forced = $('planilhaFormato')?.value || state.sheetPdfFormat || 'auto';
+    const format = forced === 'a4' ? 'a4' : forced === 'a3' ? 'a3' : (maxCols > 10 ? 'a3' : 'a4');
+    const fontSize = maxCols > 18 ? 4.2 : maxCols > 14 ? 4.8 : maxCols > 10 ? 5.4 : 6.2;
+    const padding = maxCols > 14 ? 0.75 : 1.1;
+    return { format, fontSize, padding, maxCols };
+  }
+
+  function buildAutoTableData(rows) {
+    const maxCols = sheetColumnCount(rows);
+    const normalized = rows.map(row => Array.from({ length: maxCols }, (_, i) => String(row?.[i] == null ? '' : row[i])));
+    const first = normalized[0] || [];
+    const hasHeader = first.some(v => String(v || '').trim());
+    const head = [Array.from({ length: maxCols }, (_, i) => hasHeader ? (first[i] || `Coluna ${i + 1}`) : `Coluna ${i + 1}`)];
+    const body = normalized.slice(hasHeader ? 1 : 0);
+    return { head, body, maxCols };
   }
 
   async function generateSignedPdfFromSheet(data) {
     if (!W.jspdf || !W.jspdf.jsPDF) throw new Error('jsPDF não carregou.');
-    const doc = new W.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const rows = state.sheetRows || [];
-    const maxCols = Math.min(12, Math.max(1, rows.reduce((m, r) => Math.max(m, r.length), 0)));
-    const head = [Array.from({ length: maxCols }, (_, i) => String(rows[0]?.[i] || `Coluna ${i + 1}`))];
-    const body = rows.slice(1).map(row => Array.from({ length: maxCols }, (_, i) => String(row[i] || '')));
+    const exportMode = $('planilhaExportacao')?.value || state.sheetExportMode || 'ativa';
+    const sheets = exportMode === 'todas' ? (state.workbookSheets || []) : [activeSheet()];
+    const validSheets = sheets.length ? sheets : [{ name: 'Planilha', rows: state.sheetRows || [] }];
+    const cfg = sheetPdfConfig(validSheets);
+    const doc = new W.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: cfg.format });
+
+    validSheets.forEach((sheet, index) => {
+      if (index > 0) doc.addPage();
+      const rows = sheet.rows || [];
+      const { head, body, maxCols } = buildAutoTableData(rows);
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(`Planilha assinada: ${sheet.name || 'Aba ' + (index + 1)}`, 10, 11);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(`Origem: ${state.fileName} | Linhas: ${rows.length} | Colunas: ${maxCols}`, 10, 16);
+      const usableW = pageW - 20;
+      const minCell = cfg.format === 'a3' ? 11 : 9;
+      const colW = Math.max(minCell, usableW / Math.min(maxCols, cfg.format === 'a3' ? 22 : 15));
+      const columnStyles = {};
+      for (let c = 0; c < maxCols; c++) columnStyles[c] = { cellWidth: colW };
+      doc.autoTable({
+        startY: 21,
+        head,
+        body,
+        theme: 'grid',
+        styles: { fontSize: cfg.fontSize, cellPadding: cfg.padding, overflow: 'linebreak', valign: 'top', minCellHeight: 3.5 },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 10, right: 10, top: 18, bottom: 14 },
+        tableWidth: maxCols * colW,
+        columnStyles,
+        horizontalPageBreak: true,
+        horizontalPageBreakRepeat: maxCols > 2 ? 0 : undefined,
+        didDrawPage: function () {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text(`Arquivo: ${state.fileName}`, 10, pageH - 6);
+          doc.text(`Página ${doc.internal.getNumberOfPages()}`, pageW - 10, pageH - 6, { align: 'right' });
+          doc.setTextColor(15, 23, 42);
+        }
+      });
+    });
+
+    doc.addPage();
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    doc.text('Documento de planilha assinado', 12, 12);
+    doc.text('Termo de assinatura do documento', 10, 14);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(`Origem: ${state.fileName}`, 12, 18);
-    doc.autoTable({
-      startY: 23,
-      head,
-      body,
-      theme: 'grid',
-      styles: { fontSize: 6.4, cellPadding: 1.4, overflow: 'linebreak' },
-      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
-      margin: { left: 10, right: 10, bottom: 72 }
-    });
-    doc.setPage(doc.internal.getNumberOfPages());
-    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 24;
-    if (finalY > doc.internal.pageSize.getHeight() - 78) doc.addPage();
-    await drawJsPdfSignature(doc, data);
+    doc.text(`Arquivo original: ${state.fileName}`, 10, 22);
+    doc.text(`Abas exportadas: ${validSheets.map(s => s.name).join(', ')}`, 10, 28, { maxWidth: pageW - 20 });
+    doc.setDrawColor(203, 213, 225);
+    doc.line(10, 36, pageW - 10, 36);
+    await drawJsPdfSignature(doc, data, { x: (pageW - Math.min(pageW - 24, 92 * (state.signatureScale || 100) / 100)) / 2, y: pageH - (43 * (state.signatureScale || 100) / 100) - 32 });
     const blob = doc.output('blob');
     await saveBlob(blob, safeName(state.fileName) + '_assinado.pdf');
   }
@@ -1048,8 +1205,14 @@
   function bindEvents() {
     $('assinadorArquivo')?.addEventListener('change', e => handleFile(e.target.files?.[0]).catch(err => status(err.message || String(err), 'err')));
     $('assinadorPagina')?.addEventListener('change', e => {
-      state.pdfPage = Number(e.target.value || 1);
-      if (state.type === 'pdf') renderPdfPage(state.pdfPage).catch(err => status(err.message || String(err), 'err'));
+      if (state.type === 'pdf') {
+        state.pdfPage = Number(e.target.value || 1);
+        renderPdfPage(state.pdfPage).catch(err => status(err.message || String(err), 'err'));
+      } else if (state.type === 'sheet') {
+        state.activeSheetIndex = Number(e.target.value || 0);
+        renderSheetPreview();
+        storageWrite({});
+      }
     });
     $('btnPaginaAnterior')?.addEventListener('click', () => {
       if (state.type !== 'pdf' || state.pdfPage <= 1) return;
@@ -1088,12 +1251,21 @@
         loadSignatureImage(pastedImage).catch(err => status(err.message || String(err), 'err'));
       }
     });
-    ['assinadorFundo', 'assinadorAparencia', 'assinadorGuias'].forEach(id => {
+    ['assinadorFundo', 'assinadorAparencia', 'assinadorGuias', 'assinadorTamanho', 'planilhaExportacao', 'planilhaFormato'].forEach(id => {
       $(id)?.addEventListener('change', () => {
         optionData();
+        updateSignatureSizeInfo();
         updateSignatureBox();
         storageWrite({});
       });
+    });
+    $('btnDiminuirAssinatura')?.addEventListener('click', () => {
+      if ($('assinadorTamanho')) $('assinadorTamanho').value = String(Math.max(70, Number($('assinadorTamanho').value || 100) - 5));
+      optionData(); updateSignatureSizeInfo(); updateSignatureBox(); storageWrite({});
+    });
+    $('btnAumentarAssinatura')?.addEventListener('click', () => {
+      if ($('assinadorTamanho')) $('assinadorTamanho').value = String(Math.min(180, Number($('assinadorTamanho').value || 100) + 5));
+      optionData(); updateSignatureSizeInfo(); updateSignatureBox(); storageWrite({});
     });
     $('btnSalvarAssinatura')?.addEventListener('click', () => {
       if (!state.signatureDataUrl) { status('Desenhe, importe ou cole a assinatura antes de salvar localmente.', 'warn'); return; }
@@ -1115,10 +1287,17 @@
       ['assinadorNome', 'assinadorCpf', 'assinadorCargo', 'assinadorObs'].forEach(id => { if ($(id)) $(id).value = ''; });
       if ($('assinadorFundo')) $('assinadorFundo').value = 'transparente';
       if ($('assinadorAparencia')) $('assinadorAparencia').value = 'limpa';
+      if ($('assinadorTamanho')) $('assinadorTamanho').value = '100';
+      if ($('planilhaExportacao')) $('planilhaExportacao').value = 'ativa';
+      if ($('planilhaFormato')) $('planilhaFormato').value = 'auto';
       if ($('assinadorGuias')) $('assinadorGuias').checked = true;
       state.signatureBackground = 'transparente';
       state.signatureAppearance = 'limpa';
+      state.signatureScale = 100;
+      state.sheetExportMode = 'ativa';
+      state.sheetPdfFormat = 'auto';
       state.showGuides = true;
+      updateSignatureSizeInfo();
       state.outputDirectoryHandle = null;
       state.outputDirectoryName = '';
       clearSignature();
@@ -1137,6 +1316,7 @@
     initSignaturePad();
     bindEvents();
     loadLocal();
+    updateSignatureSizeInfo();
     updateOutputFolderLabel();
   }
 
