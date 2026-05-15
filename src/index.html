@@ -52,8 +52,6 @@
     input[type=file]{padding:8px}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
-    .range-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
-    input[type=range]{padding:0;min-height:32px}
     .field{margin-bottom:10px}
     .sign-pad-wrap{position:relative;border:1px solid var(--line);background:#fff;border-radius:6px;overflow:hidden}
     #assinadorCanvas{display:block;width:100%;height:150px;touch-action:none}
@@ -69,14 +67,15 @@
     .preview-body{overflow:auto;padding:18px;display:flex;justify-content:center;align-items:flex-start;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
     .page-stage{position:relative;display:inline-block;min-width:280px;background:#fff;color:#111827;box-shadow:0 18px 54px rgba(0,0,0,.38)}
     #pdfCanvas{display:block;max-width:100%;height:auto}
-    .sheet-stage{width:min(1180px,100%);min-height:720px;background:#fff;padding:24px;color:#111827;position:relative;overflow:hidden}
-    .sheet-stage h3{margin:0 0 8px;font-size:18px}
-    .sheet-note{font-size:10px;color:#64748b;margin:0 0 10px}
-    .sheet-scroll-preview{overflow:auto;max-height:640px;border:1px solid #cbd5e1;background:#fff}
-    .sheet-table{border-collapse:collapse;width:max-content;min-width:100%;font-size:10.5px;table-layout:fixed}
-    .sheet-table td,.sheet-table th{border:1px solid #cbd5e1;padding:4px 5px;vertical-align:top;white-space:pre-wrap;word-break:break-word;min-width:70px}
+    .sheet-stage{width:min(960px,100%);min-height:720px;background:#fff;padding:24px;color:#111827;position:relative}
+    .sheet-stage h3{margin:0 0 12px;font-size:18px}
+    .sheet-table{border-collapse:collapse;width:100%;font-size:11px}
+    .sheet-table td,.sheet-table th{border:1px solid #cbd5e1;padding:5px;vertical-align:top}
     .sheet-table tr:first-child td{font-weight:800;background:#e8eef5}
-    .signature-box{position:absolute;left:34px;top:34px;width:var(--sig-box-w,260px);min-height:var(--sig-box-h,96px);border:1px solid rgba(15,109,153,.38);background:rgba(255,255,255,.96);border-radius:8px;padding:var(--sig-pad,8px);cursor:move;user-select:none;-webkit-user-select:none;touch-action:none;-ms-touch-action:none;box-shadow:0 10px 24px rgba(15,23,42,.16)}
+    .signature-box{position:absolute;left:34px;top:34px;width:var(--sig-w,260px);min-height:var(--sig-h,96px);border:1px solid rgba(15,109,153,.38);background:rgba(255,255,255,.96);border-radius:8px;padding:var(--sig-pad,8px);cursor:move;user-select:none;-webkit-user-select:none;touch-action:none;-ms-touch-action:none;box-shadow:0 10px 24px rgba(15,23,42,.16);box-sizing:border-box}
+    .signature-box.resizing{cursor:nwse-resize}
+    .sig-resize-handle{position:absolute;right:-10px;bottom:-10px;width:24px;height:24px;border-radius:999px;background:#0f6d99;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;box-shadow:0 7px 18px rgba(15,23,42,.28);touch-action:none;z-index:3}
+    .signature-box.no-card .sig-resize-handle{border:1px solid rgba(15,109,153,.35)}
     body.dragging-signature,.dragging-signature *{touch-action:none!important;-ms-touch-action:none!important;overscroll-behavior:contain}
     .signature-box.edit-guides{border:1px dashed #0f6d99;outline:1px solid rgba(15,109,153,.20);outline-offset:3px}
     .signature-box.no-bg{background:transparent}
@@ -95,7 +94,7 @@
 <div class="app">
   <header>
     <div>
-      <div class="brand">ASSINATURA DIGITAL <small>thIAguinho Soluções Digitais</small></div>
+      <div class="brand">OFICIN_IA <small>Assinador digital local</small></div>
       <h1>Assinar PDF ou planilha offline</h1>
     </div>
     <div class="header-actions">
@@ -123,25 +122,8 @@
               </select>
             </div>
             <div class="field">
-              <label>Página PDF / Aba</label>
+              <label>Página PDF</label>
               <select id="assinadorPagina" disabled><option>1</option></select>
-            </div>
-          </div>
-          <div class="grid2" id="planilhaOpcoes" style="display:none">
-            <div class="field">
-              <label>Exportação da planilha</label>
-              <select id="planilhaExportacao">
-                <option value="ativa">Somente aba selecionada</option>
-                <option value="todas">Todas as abas da planilha</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Formato do PDF da planilha</label>
-              <select id="planilhaFormato">
-                <option value="auto">Automático profissional</option>
-                <option value="a4">A4 paisagem</option>
-                <option value="a3">A3 paisagem</option>
-              </select>
             </div>
           </div>
         </section>
@@ -187,13 +169,13 @@
               </select>
             </div>
           </div>
-          <div class="field">
+          <div class="field" style="margin-top:10px">
             <label>Tamanho do quadro da assinatura</label>
-            <div class="range-row">
-              <button type="button" id="btnDiminuirAssinatura">−</button>
-              <input type="range" id="assinadorTamanho" min="70" max="180" step="5" value="100">
-              <button type="button" id="btnAumentarAssinatura">+</button>
+            <div class="grid2">
+              <button type="button" id="btnDiminuirAssinatura">Diminuir −</button>
+              <button type="button" id="btnAumentarAssinatura">Aumentar +</button>
             </div>
+            <input type="range" id="assinadorTamanho" min="40" max="220" step="5" value="100" style="margin-top:8px">
             <div class="tiny" id="assinadorTamanhoInfo">Tamanho: 100%</div>
           </div>
           <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.72rem;color:var(--muted2);margin-top:2px">
