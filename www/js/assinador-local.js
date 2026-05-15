@@ -485,6 +485,8 @@
       box.addEventListener('pointerdown', startDrag);
       D.addEventListener('pointermove', onDrag, { passive: false });
       D.addEventListener('pointerup', endDrag);
+      D.addEventListener('pointercancel', endDrag);
+      W.addEventListener('blur', endDrag);
       stage.appendChild(box);
     }
     box.innerHTML = signatureBoxHtml();
@@ -512,18 +514,38 @@
     box.style.top = Math.max(20, rect.height - 132) + 'px';
   }
 
+  function lockDragScroll() {
+    D.body?.classList.add('dragging-signature');
+    const pb = D.querySelector('.preview-body');
+    if (pb && !pb.dataset.prevOverflow) pb.dataset.prevOverflow = pb.style.overflow || 'auto';
+    if (pb) pb.style.overflow = 'hidden';
+  }
+
+  function unlockDragScroll() {
+    D.body?.classList.remove('dragging-signature');
+    const pb = D.querySelector('.preview-body');
+    if (pb) {
+      pb.style.overflow = pb.dataset.prevOverflow || 'auto';
+      delete pb.dataset.prevOverflow;
+    }
+  }
+
   function startDrag(e) {
     if ($('assinadorModo')?.value === 'fim') return;
+    e.preventDefault();
+    e.stopPropagation();
     const box = e.currentTarget;
     const r = box.getBoundingClientRect();
     state.dragging = true;
     state.dragOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
-    box.setPointerCapture(e.pointerId);
+    lockDragScroll();
+    try { box.setPointerCapture(e.pointerId); } catch (_) {}
   }
 
   function onDrag(e) {
     if (!state.dragging) return;
     e.preventDefault();
+    e.stopPropagation();
     const box = D.querySelector('.signature-box');
     const stage = box?.parentElement;
     if (!box || !stage) return;
@@ -537,9 +559,19 @@
     box.style.top = y + 'px';
   }
 
-  function endDrag() {
+  function endDrag(e) {
+    if (!state.dragging) return;
+    if (e) {
+      try { e.preventDefault(); } catch (_) {}
+      try { e.stopPropagation(); } catch (_) {}
+    }
     state.dragging = false;
+    unlockDragScroll();
   }
+
+  D.addEventListener('touchmove', function(e) {
+    if (state.dragging) e.preventDefault();
+  }, { passive: false });
 
 
   function isAndroidApkWebView() {
